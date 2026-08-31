@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">TinkerTown collector shelf mark</title>
+  <rect width="64" height="64" rx="16" fill="#252422"/>
+  <circle cx="22" cy="23" r="6" fill="#FFFCF2"/><path d="M14 40c0-7 3.6-11 8-11s8 4 8 11H14Z" fill="#FFFCF2"/>
+  <circle cx="43" cy="26" r="4.5" fill="#CCC5B9"/><path d="M36.5 40c0-5.5 2.9-9 6.5-9s6.5 3.5 6.5 9h-13Z" fill="#CCC5B9"/>
+  <rect x="10" y="40" width="44" height="5" rx="2.5" fill="#EB5E28"/>
+</svg>

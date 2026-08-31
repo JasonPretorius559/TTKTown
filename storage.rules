@@ -1,0 +1,10 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function imageUnder10MB() { return request.resource.size < 10 * 1024 * 1024 && request.resource.contentType.matches('image/(jpeg|png|webp)'); }
+    match /users/{userId}/{allPaths=**} { allow read: if true; allow write: if request.auth != null && request.auth.uid == userId && imageUnder10MB(); }
+    match /listings/{userId}/{allPaths=**} { allow read: if true; allow write: if request.auth != null && request.auth.uid == userId && imageUnder10MB(); }
+    match /posts/{userId}/{allPaths=**} { allow read: if true; allow write: if request.auth != null && request.auth.uid == userId && imageUnder10MB(); }
+    match /figures/{allPaths=**} { allow read: if true; allow write: if false; }
+  }
+}

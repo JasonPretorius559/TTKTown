@@ -1,0 +1,246 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function owner(userId) { return signedIn() && request.auth.uid == userId; }
+    function role(name) { return signedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == name; }
+    function staff() { return role('ADMIN') || role('MODERATOR'); }
+    function validText(value, max) { return value is string && value.size() <= max; }
+    function collectionVisible(userId, collectionId) {
+      let shelf = get(/databases/$(database)/documents/users/$(userId)/collections/$(collectionId));
+      return owner(userId) || (signedIn() && shelf.data.visibility == 'PUBLIC') || (
+        signedIn() && shelf.data.visibility == 'FOLLOWERS'
+        && exists(/databases/$(database)/documents/follows/$(request.auth.uid + '_' + userId))
+      );
+    }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if owner(userId) && request.resource.data.role == 'USER';
+      allow update: if owner(userId) && request.resource.data.role == resource.data.role || role('ADMIN');
+      allow delete: if role('ADMIN');
+      match /collectionItems/{id} { allow read: if true; allow write: if owner(userId); }
+      match /ownedFigures/{id} { allow read, write: if owner(userId); }
+      match /collections/{id} {
+        allow read: if collectionVisible(userId, id);
+        allow write: if owner(userId);
+      }
+      match /collectionFigures/{id} {
+        allow read: if collectionVisible(userId, resource.data.collectionId);
+        allow write: if owner(userId);
+      }
+      match /wishlistItems/{id} { allow read, write: if owner(userId); }
+      match /savedPosts/{id} { allow read, write: if owner(userId); }
+      match /notifications/{id} {
+        allow read, update, delete: if owner(userId);
+        allow create: if owner(userId) || staff() || (
+          signedIn()
+          && request.resource.data.actorId == request.auth.uid
+          && request.resource.data.targetUserId == userId
+          && request.resource.data.type in ['COMMENT', 'REPLY']
+          && request.resource.data.read == false
+          && validText(request.resource.data.body, 140)
+          && exists(/databases/$(database)/documents/posts/$(request.resource.data.postId)/comments/$(request.resource.data.commentId))
+          && get(/databases/$(database)/documents/posts/$(request.resource.data.postId)/comments/$(request.resource.data.commentId)).data.authorId == request.auth.uid
+        );
+      }
+    }
+    match /figures/{id} {
+      allow read: if true;
+      allow create: if role('ADMIN') || (
+        signedIn()
+        && request.resource.data.id == id
+        && request.resource.data.submittedBy == request.auth.uid
+        && request.resource.data.verificationStatus == 'COMMUNITY'
+        && request.resource.data.moderationStatus == 'PENDING'
+        && validText(request.resource.data.name, 160)
+        && request.resource.data.name.size() > 0
+        && validText(request.resource.data.franchise, 120)
+        && request.resource.data.franchise.size() > 0
+        && validText(request.resource.data.manufacturer, 120)
+        && validText(request.resource.data.description, 1000)
+        && request.resource.data.sourceRequestId is string
+        && existsAfter(/databases/$(database)/documents/figureRequests/$(request.resource.data.sourceRequestId))
+        && getAfter(/databases/$(database)/documents/figureRequests/$(request.resource.data.sourceRequestId)).data.figureId == id
+        && getAfter(/databases/$(database)/documents/figureRequests/$(request.resource.data.sourceRequestId)).data.requesterId == request.auth.uid
+      );
+      allow update, delete: if role('ADMIN');
+    }
+    match /figureRequests/{id} {
+      allow create: if signedIn()
+        && request.resource.data.requesterId == request.auth.uid
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.figureId is string
+        && validText(request.resource.data.name, 160)
+        && validText(request.resource.data.franchise, 120)
+        && existsAfter(/databases/$(database)/documents/figures/$(request.resource.data.figureId))
+        && getAfter(/databases/$(database)/documents/figures/$(request.resource.data.figureId)).data.submittedBy == request.auth.uid
+        && getAfter(/databases/$(database)/documents/figures/$(request.resource.data.figureId)).data.sourceRequestId == id;
+      allow read: if signedIn() && (resource.data.requesterId == request.auth.uid || staff());
+      allow update: if staff();
+      allow delete: if role('ADMIN');
+    }
+    match /catalogueCandidates/{id} {
+      allow read: if staff();
+      allow create, update: if role('ADMIN');
+      allow delete: if false;
+    }
+    match /catalogueImportRuns/{id} { allow read: if staff(); allow create, update: if role('ADMIN'); allow delete: if false; }
+    match /listings/{id} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.sellerId == request.auth.uid && request.resource.data.priceCents > 0;
+      allow update, delete: if signedIn() && (resource.data.sellerId == request.auth.uid || staff());
+    }
+    match /posts/{id} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.authorId == request.auth.uid && validText(request.resource.data.caption, 2200);
+      allow delete: if signedIn() && (resource.data.authorId == request.auth.uid || staff());
+      allow update: if signedIn() && (
+        resource.data.authorId == request.auth.uid || staff() ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'updatedAt'])
+          && request.resource.data.likes is int
+          && (
+            (!exists(/databases/$(database)/documents/posts/$(id)/likes/$(request.auth.uid))
+              && existsAfter(/databases/$(database)/documents/posts/$(id)/likes/$(request.auth.uid))
+              && request.resource.data.likes == resource.data.likes + 1)
+            ||
+            (exists(/databases/$(database)/documents/posts/$(id)/likes/$(request.auth.uid))
+              && !existsAfter(/databases/$(database)/documents/posts/$(id)/likes/$(request.auth.uid))
+              && request.resource.data.likes == resource.data.likes - 1
+              && request.resource.data.likes >= 0)
+          )
+        )
+        ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comments', 'commentMutationId', 'updatedAt'])
+          && request.resource.data.comments is int
+          && request.resource.data.comments == resource.data.comments + 1
+          && request.resource.data.commentMutationId is string
+          && existsAfter(/databases/$(database)/documents/posts/$(id)/comments/$(request.resource.data.commentMutationId))
+          && getAfter(/databases/$(database)/documents/posts/$(id)/comments/$(request.resource.data.commentMutationId)).data.authorId == request.auth.uid
+          && getAfter(/databases/$(database)/documents/posts/$(id)/comments/$(request.resource.data.commentMutationId)).data.postId == id
+        )
+      );
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if signedIn()
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.postId == id
+          && validText(request.resource.data.content, 1500)
+          && request.resource.data.content.size() > 0
+          && (request.resource.data.parentId is string || request.resource.data.parentId == null)
+          && (
+            request.resource.data.parentId == null
+            ||
+            (
+              exists(/databases/$(database)/documents/posts/$(id)/comments/$(request.resource.data.parentId))
+              && get(/databases/$(database)/documents/posts/$(id)/comments/$(request.resource.data.parentId)).data.postId == id
+              && get(/databases/$(database)/documents/posts/$(id)/comments/$(request.resource.data.parentId)).data.deletedAt == null
+            )
+          )
+          && getAfter(/databases/$(database)/documents/posts/$(id)).data.comments
+            == get(/databases/$(database)/documents/posts/$(id)).data.comments + 1
+          && getAfter(/databases/$(database)/documents/posts/$(id)).data.commentMutationId == commentId;
+        allow update: if signedIn() && (
+          (
+            resource.data.authorId == request.auth.uid
+            && resource.data.deletedAt == null
+            && (
+              (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'updatedAt'])
+                && validText(request.resource.data.content, 1500)
+                && request.resource.data.content.size() > 0)
+              ||
+              (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deletedAt', 'updatedAt'])
+                && request.resource.data.deletedAt != null)
+            )
+          )
+          ||
+          (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount', 'updatedAt'])
+            && request.resource.data.likeCount is int
+            && (
+              (!exists(/databases/$(database)/documents/posts/$(id)/comments/$(commentId)/likes/$(request.auth.uid))
+                && existsAfter(/databases/$(database)/documents/posts/$(id)/comments/$(commentId)/likes/$(request.auth.uid))
+                && request.resource.data.likeCount == resource.data.likeCount + 1)
+              ||
+              (exists(/databases/$(database)/documents/posts/$(id)/comments/$(commentId)/likes/$(request.auth.uid))
+                && !existsAfter(/databases/$(database)/documents/posts/$(id)/comments/$(commentId)/likes/$(request.auth.uid))
+                && request.resource.data.likeCount == resource.data.likeCount - 1
+                && request.resource.data.likeCount >= 0)
+            )
+          )
+          ||
+          (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replyCount', 'replyMutationId', 'updatedAt'])
+            && request.resource.data.replyCount == resource.data.replyCount + 1
+            && request.resource.data.replyMutationId is string
+            && existsAfter(/databases/$(database)/documents/posts/$(id)/comments/$(request.resource.data.replyMutationId))
+            && getAfter(/databases/$(database)/documents/posts/$(id)/comments/$(request.resource.data.replyMutationId)).data.parentId == commentId
+          )
+        );
+        allow delete: if false;
+        match /likes/{userId} {
+          allow read: if true;
+          allow create: if owner(userId)
+            && request.resource.data.userId == userId
+            && request.resource.data.commentId == commentId
+            && request.resource.data.postId == id
+            && getAfter(/databases/$(database)/documents/posts/$(id)/comments/$(commentId)).data.likeCount
+              == get(/databases/$(database)/documents/posts/$(id)/comments/$(commentId)).data.likeCount + 1;
+          allow delete: if owner(userId)
+            && getAfter(/databases/$(database)/documents/posts/$(id)/comments/$(commentId)).data.likeCount
+              == get(/databases/$(database)/documents/posts/$(id)/comments/$(commentId)).data.likeCount - 1;
+        }
+      }
+      match /likes/{userId} {
+        allow read: if true;
+        allow create: if owner(userId)
+          && request.resource.data.userId == userId
+          && request.resource.data.postId == id
+          && request.resource.data.keys().hasOnly(['id', 'postId', 'userId', 'createdAt'])
+          && getAfter(/databases/$(database)/documents/posts/$(id)).data.likes
+            == get(/databases/$(database)/documents/posts/$(id)).data.likes + 1;
+        allow delete: if owner(userId)
+          && getAfter(/databases/$(database)/documents/posts/$(id)).data.likes
+            == get(/databases/$(database)/documents/posts/$(id)).data.likes - 1;
+      }
+    }
+    match /follows/{id} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.followerId == request.auth.uid && request.resource.data.followingId != request.auth.uid;
+      allow delete: if signedIn() && resource.data.followerId == request.auth.uid;
+    }
+    match /conversations/{id} { allow read, update: if signedIn() && request.auth.uid in resource.data.memberIds; allow create: if signedIn() && request.auth.uid in request.resource.data.memberIds; }
+    match /conversations/{id}/messages/{messageId} { allow read: if signedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(id)).data.memberIds; allow create: if signedIn() && request.resource.data.senderId == request.auth.uid; }
+    match /offers/{id} { allow read, create: if signedIn(); allow update: if signedIn() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid); }
+    match /orders/{id} {
+      allow read: if signedIn() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid || staff());
+      allow create: if false;
+      allow update: if signedIn() && resource.data.sellerId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'courier', 'trackingNumber', 'updatedAt'])
+        && request.resource.data.status in ['PROCESSING', 'SHIPPED'];
+    }
+    match /reports/{id} {
+      allow create: if signedIn()
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.targetType in ['POST', 'COMMENT', 'USER', 'LISTING']
+        && request.resource.data.status == 'OPEN';
+      allow read: if staff() || (signedIn() && resource.data.reporterId == request.auth.uid);
+      allow update: if staff() || (
+        signedIn()
+        && resource.data.reporterId == request.auth.uid
+        && resource.data.status in ['RESOLVED', 'DISMISSED']
+        && request.resource.data.reporterId == resource.data.reporterId
+        && request.resource.data.targetType == resource.data.targetType
+        && request.resource.data.targetId == resource.data.targetId
+        && request.resource.data.status == 'OPEN'
+      );
+    }
+    match /auditLogs/{id} {
+      allow read: if staff();
+      allow create: if staff() && request.resource.data.actorId == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

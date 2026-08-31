@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-labelledby="title desc">
+  <title id="title">Funko catalogue image pending</title>
+  <desc id="desc">TinkerTown catalogue placeholder for a Funko collectible</desc>
+  <rect width="800" height="800" rx="64" fill="#f4efe6"/>
+  <circle cx="400" cy="318" r="152" fill="#181715"/>
+  <circle cx="343" cy="300" r="24" fill="#f15a2a"/><circle cx="457" cy="300" r="24" fill="#f15a2a"/>
+  <path d="M310 410c54 36 126 36 180 0" fill="none" stroke="#f4efe6" stroke-width="22" stroke-linecap="round"/>
+  <path d="M244 676c15-123 72-190 156-190s141 67 156 190" fill="#181715"/>
+  <rect x="118" y="92" width="214" height="54" rx="27" fill="#f15a2a"/>
+  <text x="225" y="128" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="800" fill="white">TINKERTOWN</text>
+  <text x="400" y="744" text-anchor="middle" font-family="Arial, sans-serif" font-size="25" font-weight="700" letter-spacing="3" fill="#766e64">OFFICIAL IMAGE PENDING</text>
+</svg>

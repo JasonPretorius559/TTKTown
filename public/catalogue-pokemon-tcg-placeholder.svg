@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-labelledby="title desc">
+  <title id="title">Pokémon TCG catalogue image pending</title>
+  <desc id="desc">TinkerTown catalogue placeholder for a Pokémon trading card</desc>
+  <rect width="800" height="800" rx="64" fill="#f4efe6"/>
+  <rect x="190" y="96" width="420" height="608" rx="34" fill="#f4c430" stroke="#181715" stroke-width="22"/>
+  <rect x="224" y="142" width="352" height="516" rx="18" fill="#204b98"/>
+  <circle cx="400" cy="393" r="138" fill="#f4efe6" stroke="#181715" stroke-width="22"/>
+  <path d="M262 393h276" stroke="#181715" stroke-width="24"/>
+  <path d="M400 255a138 138 0 0 1 138 138H262a138 138 0 0 1 138-138z" fill="#f15a2a"/>
+  <circle cx="400" cy="393" r="48" fill="#f4efe6" stroke="#181715" stroke-width="20"/>
+  <rect x="118" y="58" width="214" height="54" rx="27" fill="#f15a2a"/>
+  <text x="225" y="94" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="800" fill="white">TINKERTOWN</text>
+  <text x="400" y="751" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="3" fill="#766e64">COMMUNITY CARD IMAGE PENDING</text>
+</svg>
