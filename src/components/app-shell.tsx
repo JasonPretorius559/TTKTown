@@ -27,7 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (loading || !user) return <div className="not-found" role="status" aria-live="polite"><div><Image src="/tinkertown-mark.svg" alt="TinkerTown" width={72} height={72}/><h2>Opening the Town…</h2></div></div>;
   return <div className="app-shell"><a className="skip-link" href="#main-content">Skip to Main Content</a>
     <aside className="app-sidebar">
-      <Link href="/home" className="side-logo"><Image src="/tinkertown-mark.svg" alt="" width={38} height={38} priority /><strong>TinkerTown</strong></Link>
+      <Link href="/home" className="side-logo"><Image src="/tinkertown-mark.svg" alt="" width={38} height={38} priority /><span><strong>TinkerTown</strong><small>Little people. Big stories.</small></span></Link>
       <nav className="side-nav" aria-label="Primary navigation">
         {nav.map(([group,items])=><div className="side-group" key={group}><div className="side-label">{group}</div>{items.map(([href,label,Icon]) => <Link key={href} href={href} aria-current={active(href)?"page":undefined} className={cn("side-link",active(href)&&"active")}><Icon size={18}/>{label}{label==="Messages"&&notifications.length>0&&<span>{notifications.length}</span>}</Link>)}</div>)}
       </nav>
@@ -42,6 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="main-wrap">
       <header className="topbar">
         <button className="icon-btn" aria-label="Open menu" style={{display:"none"}}><Menu size={20}/></button>
+        <Link href="/home" className="top-brand" aria-label="TinkerTown home"><Image src="/tinkertown-mark.svg" alt="" width={30} height={30}/><span><strong>TINKERTOWN</strong><small>Good figures. Good people.</small></span></Link>
         <div className="top-actions">
           <button className="icon-btn search-trigger" aria-label="Search TinkerTown" title="Search · Ctrl K" onClick={()=>setSearchOpen(true)}><Search size={19}/></button>
           <Link href="/marketplace/sell" className="btn btn-primary btn-small">Sell a Figure</Link>

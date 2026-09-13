@@ -1,5 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 84" role="img" aria-labelledby="title">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 84" role="img" aria-labelledby="title">
   <title id="title">TinkerTown</title>
-  <g transform="translate(4 10)"><rect width="64" height="64" rx="16" fill="#252422"/><circle cx="22" cy="23" r="6" fill="#FFFCF2"/><path d="M14 40c0-7 3.6-11 8-11s8 4 8 11H14Z" fill="#FFFCF2"/><circle cx="43" cy="26" r="4.5" fill="#CCC5B9"/><path d="M36.5 40c0-5.5 2.9-9 6.5-9s6.5 3.5 6.5 9h-13Z" fill="#CCC5B9"/><rect x="10" y="40" width="44" height="5" rx="2.5" fill="#EB5E28"/></g>
-  <text x="86" y="54" fill="#252422" font-family="Sora, Inter, ui-sans-serif, sans-serif" font-size="38" font-weight="750" letter-spacing="-1.5">TinkerTown</text><rect x="87" y="64" width="188" height="4" rx="2" fill="#EB5E28"/>
+  <g transform="translate(5 9) scale(1.02)"><path fill="#FF3830" d="M29.3 4.7a4 4 0 0 1 5.4 0l25 22.4A4 4 0 0 1 57 34H7a4 4 0 0 1-2.7-6.9l25-22.4Z"/><path fill="#FF3830" d="M10 28h44v28a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4V28Z"/><path fill="#fff" d="M20 30a12 12 0 0 1 24 0v19a5 5 0 0 1-5 5H25a5 5 0 0 1-5-5V30Z"/><ellipse cx="27" cy="38" rx="2.5" ry="5" fill="#FF3830"/><ellipse cx="37" cy="38" rx="2.5" ry="5" fill="#FF3830"/></g>
+  <text x="82" y="55" fill="#000" font-family="Montserrat,Arial Black,sans-serif" font-size="42" font-weight="900" letter-spacing="-2.5">TINKERTOWN</text>
+  <text x="84" y="72" fill="#000" font-family="Inter,Arial,sans-serif" font-size="7" font-weight="800" letter-spacing="5">TOYS  PEOPLE  PLACES</text>
 </svg>
