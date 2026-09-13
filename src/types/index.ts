@@ -13,6 +13,7 @@ export type Listing = {
 };
 
 export type Post = {
+  mediaType?: "VIDEO"; videoAssetId?: string; videoUrl?: string; videoDuration?: number;
   id: string; author: string; displayName: string; avatar: string; image: string; images?: string[]; imagePathnames?: string[];
   authorId?: string; caption: string; likes: number; comments: number; liked?: boolean; time: string;
   figureId?: string; listingId?: string; audience?: "PUBLIC" | "FOLLOWERS";
@@ -57,6 +58,7 @@ export type FigureRequest = {
   createdAt?:unknown; updatedAt?:unknown; reviewedAt?:unknown;
 };
 export type CatalogueCandidate = {
+  imageStatus?: "APPROVED" | "HELD"; imageAssetId?: string; imageBytes?: number; holdReason?: string;
   id:string; source:"EBAY"|"FUNKO"|"MATTEL"|"MCFARLANE"|"HOT_WHEELS_WIKI"|"POKEMON_TCG_WIKI"|"GCD"|"WEB"; sourceId:string; sourceUrl:string; sourceQuery:string; fingerprint:string; sourceLicense?:string;
   name:string; franchise:string; character:string; manufacturer:string; series:string; scale:string;
   releaseYear:number|null; description:string; referenceImageUrl:string; referenceImagePathname?:string; sourcePrice?:number; sourceCurrency?:string;

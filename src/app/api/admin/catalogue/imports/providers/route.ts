@@ -6,9 +6,11 @@ import { discoverMcFarlaneCollectibles } from "@/lib/catalogue-import/sites/mcfa
 import { discoverHotWheelsWikiCollectibles } from "@/lib/catalogue-import/sites/hot-wheels-wiki";
 import { discoverPokemonTcgWikiCollectibles } from "@/lib/catalogue-import/sites/pokemon-tcg-wiki";
 import { discoverGrandComicsDatabaseCollectibles } from "@/lib/catalogue-import/sites/grand-comics-database";
+import { acquireImportSlot } from "@/lib/catalogue-import/run-control";
+import { publishImport } from "@/lib/catalogue-import/publish";
 import { importCandidateImages } from "@/lib/catalogue-import/images";
 
-export const runtime="nodejs";export const maxDuration=60;
+export const runtime="nodejs";export const maxDuration=300;
 type Provider="MATTEL"|"MCFARLANE"|"HOT_WHEELS_WIKI"|"POKEMON_TCG_WIKI"|"GCD";
 
 export async function POST(request:NextRequest){
@@ -17,8 +19,8 @@ export async function POST(request:NextRequest){
   const profileResponse=await fetch(`https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/users/${encodeURIComponent(user.uid)}`,{headers:{Authorization:`Bearer ${firebaseToken}`},cache:"no-store"});const profile=await profileResponse.json() as {fields?:{role?:{stringValue?:string}}};if(profile.fields?.role?.stringValue!=="ADMIN")return NextResponse.json({error:"Administrator access required"},{status:403});
   const body=await request.json().catch(()=>({})) as {provider?:Provider;limit?:number};const provider=body.provider;const limit=Math.max(1,Math.min(Number(body.limit)||25,provider==="MCFARLANE"?25:100));if(provider!=="MATTEL"&&provider!=="MCFARLANE"&&provider!=="HOT_WHEELS_WIKI"&&provider!=="POKEMON_TCG_WIKI"&&provider!=="GCD")return NextResponse.json({error:"Choose a supported provider"},{status:400});
   const runId=randomUUID();try{
-    const result=provider==="MATTEL"?await discoverMattelCollectibles(runId,limit):provider==="MCFARLANE"?await discoverMcFarlaneCollectibles(runId,limit):provider==="HOT_WHEELS_WIKI"?await discoverHotWheelsWikiCollectibles(runId,limit):provider==="POKEMON_TCG_WIKI"?await discoverPokemonTcgWikiCollectibles(runId,limit):await discoverGrandComicsDatabaseCollectibles(runId,limit);const candidates=await importCandidateImages(result.candidates);
+    await acquireImportSlot();const result=provider==="MATTEL"?await discoverMattelCollectibles(runId,limit):provider==="MCFARLANE"?await discoverMcFarlaneCollectibles(runId,limit):provider==="HOT_WHEELS_WIKI"?await discoverHotWheelsWikiCollectibles(runId,limit):provider==="POKEMON_TCG_WIKI"?await discoverPokemonTcgWikiCollectibles(runId,limit):await discoverGrandComicsDatabaseCollectibles(runId,limit);const candidates=await importCandidateImages(result.candidates);const summary=await publishImport(user.uid,runId,candidates);
     const queries="sitemaps" in result?result.sitemaps:"sitemap" in result?[result.sitemap]:result.pages;
-    return NextResponse.json({runId,source:provider,franchise:provider==="HOT_WHEELS_WIKI"?"Hot Wheels":provider==="POKEMON_TCG_WIKI"?"Pokémon Trading Card Game":"Multi-franchise",queries,discovered:result.discovered,staged:candidates.length,candidates});
+    return NextResponse.json({runId,source:provider,franchise:provider==="HOT_WHEELS_WIKI"?"Hot Wheels":provider==="POKEMON_TCG_WIKI"?"Pokémon Trading Card Game":"Multi-franchise",queries,discovered:result.discovered,staged:candidates.length,...summary,candidates});
   }catch(reason){return NextResponse.json({error:reason instanceof Error?reason.message:"Provider import failed"},{status:502})}
 }

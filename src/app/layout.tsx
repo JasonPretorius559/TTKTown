@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import { AuthProvider } from "@/components/auth-provider";
 import { ToastProvider } from "@/components/toast-provider";
 import "./globals.css";
+import "./shorts.css";
 
 const manrope = Manrope({ subsets:["latin"], variable:"--font-manrope" });
 

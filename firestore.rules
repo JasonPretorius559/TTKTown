@@ -17,7 +17,8 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if true;
       allow create: if owner(userId) && request.resource.data.role == 'USER';
-      allow update: if owner(userId) && request.resource.data.role == resource.data.role || role('ADMIN');
+      allow update: if (owner(userId) && request.resource.data.role == resource.data.role
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['suspended'])) || role('ADMIN');
       allow delete: if role('ADMIN');
       match /collectionItems/{id} { allow read: if true; allow write: if owner(userId); }
       match /ownedFigures/{id} { allow read, write: if owner(userId); }
@@ -93,10 +94,14 @@ service cloud.firestore {
     }
     match /posts/{id} {
       allow read: if true;
-      allow create: if signedIn() && request.resource.data.authorId == request.auth.uid && validText(request.resource.data.caption, 2200);
-      allow delete: if signedIn() && (resource.data.authorId == request.auth.uid || staff());
+      allow create: if signedIn() && request.resource.data.authorId == request.auth.uid && validText(request.resource.data.caption, 2200)
+        && !request.resource.data.keys().hasAny(['mediaType', 'videoAssetId', 'videoUrl', 'videoDuration']);
+      allow delete: if signedIn() && (resource.data.authorId == request.auth.uid || staff()) && !resource.data.keys().hasAny(['videoAssetId']);
       allow update: if signedIn() && (
-        resource.data.authorId == request.auth.uid || staff() ||
+        (resource.data.authorId == request.auth.uid
+          && !resource.data.keys().hasAny(['videoAssetId'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['caption', 'updatedAt'])
+          && validText(request.resource.data.caption, 2200)) || staff() ||
         (
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'updatedAt'])
           && request.resource.data.likes is int

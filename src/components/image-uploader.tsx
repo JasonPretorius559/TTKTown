@@ -8,8 +8,8 @@ import { auth } from "@/lib/firebase";
 
 export type UploadedImage = { pathname:string; url:string; contentType:string };
 
-export function ImageUploader({ value, onChange, maxImages = 8 }: {
-  value:UploadedImage[]; onChange:(images:UploadedImage[])=>void; maxImages?:number;
+export function ImageUploader({ value, onChange, maxImages = 8, capture = false, prompt = "Add images" }: {
+  value:UploadedImage[]; onChange:(images:UploadedImage[])=>void; maxImages?:number; capture?:boolean; prompt?:string;
 }) {
   const [busy, setBusy] = React.useState(false);
   const [progress, setProgress] = React.useState(0);
@@ -46,9 +46,9 @@ export function ImageUploader({ value, onChange, maxImages = 8 }: {
 
   return <div className="form-stack" aria-busy={busy}>
     <label className="empty" style={{border:"2px dashed var(--line)",padding:25,cursor:"pointer"}}>
-      <ImagePlus size={32}/><strong role="status" aria-live="polite">{busy?`Uploading ${progress}%`:`Add images (${value.length}/${maxImages})`}</strong>
+      <ImagePlus size={32}/><strong role="status" aria-live="polite">{busy?`Uploading ${progress}%`:value.length?`${value.length} of ${maxImages} photos added`:prompt}</strong>
       <p>JPEG, PNG, or WebP · maximum 2&nbsp;MB each</p>
-      <input name="images" className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" multiple={maxImages>1} disabled={busy||value.length>=maxImages} onChange={choose}/>
+      <input name="images" className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" capture={capture?"environment":undefined} multiple={maxImages>1&&!capture} disabled={busy||value.length>=maxImages} onChange={choose}/>
     </label>
     {error&&<div className="demo-note" role="alert">{error}</div>}
     {value.length>0&&<div className="shelf-grid">{value.map((item,index)=><div className="card" style={{position:"relative",overflow:"hidden"}} key={item.pathname}><Image src={item.url} alt={`Upload ${index+1}`} width={300} height={300} style={{width:"100%",height:160,objectFit:"cover"}}/><button type="button" className="heart-btn" aria-label={`Remove image ${index+1}`} onClick={()=>onChange(value.filter(image=>image.pathname!==item.pathname))}><Trash2 size={17}/></button></div>)}</div>}

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Bell, Compass, Grid2X2, Home, Menu, MessageCircle, Package, Search, Settings, ShoppingBag, Store, UserRound } from "lucide-react";
+import { Film, Bell, Compass, Grid2X2, Home, Menu, MessageCircle, Package, Search, Settings, ShoppingBag, Store, UserRound } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { AccountMenu, GlobalSearch } from "@/components/shell-overlays";
 import { useFirestoreCollection } from "@/lib/firestore-data";
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import type { NotificationItem } from "@/types";
 
 const nav = [
-  ["Discover",[["/home","Home",Home],["/discover","Discover",Compass],["/catalogue","Catalogue",Grid2X2],["/marketplace","Marketplace",Store]]],
+  ["Discover",[["/home","Home",Home],["/shorts","Shorts",Film],["/discover","Discover",Compass],["/catalogue","Catalogue",Grid2X2],["/marketplace","Marketplace",Store]]],
   ["Your collection",[["/collection","Collection",Package]]],
   ["Activity",[["/messages","Messages",MessageCircle],["/orders","Orders",ShoppingBag]]]
 ] as const;
@@ -52,7 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main id="main-content" tabIndex={-1}>{children}</main>
     </div>
     <nav className="mobile-nav" aria-label="Mobile navigation">
-      {[["/home","Home",Home],["/catalogue","Figures",Grid2X2],["/marketplace","Market",Store],["/messages","Chat",MessageCircle],[user?.username ? `/profile/${user.username}` : "/onboarding","Profile",UserRound]] .map(([href,label,Icon])=><Link key={href as string} href={href as string} aria-current={active(href as string)?"page":undefined} className={active(href as string)?"active":""}><Icon size={20}/><span>{label as string}</span></Link>)}
+      {[["/home","Home",Home],["/shorts","Shorts",Film],["/marketplace","Market",Store],["/messages","Chat",MessageCircle],[user?.username ? `/profile/${user.username}` : "/onboarding","Profile",UserRound]] .map(([href,label,Icon])=><Link key={href as string} href={href as string} aria-current={active(href as string)?"page":undefined} className={active(href as string)?"active":""}><Icon size={20}/><span>{label as string}</span></Link>)}
     </nav>
     <GlobalSearch open={searchOpen} onClose={closeSearch}/>
   </div>;

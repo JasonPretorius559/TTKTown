@@ -17,8 +17,8 @@ function normalized(value: string | null | undefined) {
   return (value || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function identityKey(value: Pick<CatalogueCandidate | Figure, "name" | "manufacturer" | "series">) {
-  return [value.manufacturer, value.name, value.series].map(normalized).join("|");
+function identityKey(value: Pick<CatalogueCandidate | Figure, "name" | "manufacturer" | "series" | "scale" | "releaseYear">) {
+  return [value.manufacturer, value.name, value.series, value.scale, String(value.releaseYear || "")].map(normalized).join("|");
 }
 
 function validHttpsUrl(value: string) {
@@ -26,11 +26,8 @@ function validHttpsUrl(value: string) {
 }
 
 function publishableImage(candidate:CatalogueCandidate){
-  if(validHttpsUrl(candidate.referenceImageUrl))return candidate.referenceImageUrl;
-  if(candidate.source==="FUNKO")return "/catalogue-funko-placeholder.svg";
-  if(candidate.source==="HOT_WHEELS_WIKI")return "/catalogue-hot-wheels-placeholder.svg";
-  if(candidate.source==="POKEMON_TCG_WIKI")return "/catalogue-pokemon-tcg-placeholder.svg";
-  return candidate.source==="GCD"?"/catalogue-comic-placeholder.svg":"";
+  if(candidate.imageStatus!=="APPROVED" || !candidate.imageAssetId || !candidate.referenceImagePathname?.startsWith("catalogue/approved/"))return "";
+  return candidate.referenceImageUrl===`/api/blob?pathname=${encodeURIComponent(candidate.referenceImagePathname)}`?candidate.referenceImageUrl:"";
 }
 
 export function catalogueSlug(value: string, suffix: string) {
