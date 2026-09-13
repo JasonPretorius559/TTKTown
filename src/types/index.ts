@@ -48,8 +48,12 @@ export type CollectionFigure = {
   createdAt?:unknown; updatedAt?:unknown;
 };
 export type WishlistItem = { id:string; userId:string; figureId:string; priority:number; notes?:string; figure?:Figure };
-export type Conversation = { id:string; memberIds:string[]; memberNames?:Record<string,string>; lastMessage?:string; updatedAt?:unknown };
-export type Message = { id:string; conversationId:string; senderId:string; content:string; createdAt?:unknown; readAt?:unknown };
+export type Conversation = {
+  id:string; memberIds:string[]; memberNames?:Record<string,string>; memberUsernames?:Record<string,string>;
+  memberAvatars?:Record<string,string>; lastMessage?:string; lastMessageId?:string; lastSenderId?:string;
+  lastMessageAt?:unknown; lastReadAt?:Record<string,unknown>; createdAt?:unknown; updatedAt?:unknown;
+};
+export type Message = { id:string; conversationId:string; senderId:string; content:string; createdAt?:unknown; updatedAt?:unknown };
 export type Order = { id:string; listingId:string; buyerId:string; sellerId:string; amountCents:number; currency:string; status:string; trackingNumber?:string; courier?:string; title?:string; image?:string };
 export type Report = { id:string; reporterId:string; targetType:string; targetId:string; reason:string; details?:string; status:string };
 export type FigureRequest = {

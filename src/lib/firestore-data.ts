@@ -9,7 +9,8 @@ import type { WriteBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { planAutomaticApprovals } from "@/lib/catalogue-auto-approval";
 import { assertAppropriateContent, assertRecordContent } from "@/lib/content-filter";
-import type { CatalogueCandidate, Figure } from "@/types";
+import type { CatalogueCandidate, Figure, UserProfile } from "@/types";
+import { directConversationId } from "@/lib/messaging";
 
 export type CommunityFigureInput={
   requesterId:string;requesterUsername:string;name:string;franchise:string;manufacturer:string;notes:string;
@@ -132,6 +133,47 @@ export async function getRecord<T>(path: string) {
   if (!db) throw new Error("Firebase is not configured");
   const snapshot = await getDoc(doc(db, path));
   return snapshot.exists() ? ({ id:snapshot.id, ...snapshot.data() } as T) : null;
+}
+
+export async function startDirectConversation(currentUser:UserProfile,otherUser:UserProfile){
+  if(!db)throw new Error("Firebase is not configured");
+  if(currentUser.uid===otherUser.uid)throw new Error("Choose another collector to start a conversation");
+  const firestore=db;const conversationId=directConversationId(currentUser.uid,otherUser.uid);
+  const conversationRef=doc(firestore,"conversations",conversationId);
+  await runTransaction(firestore,async transaction=>{
+    const existing=await transaction.get(conversationRef);
+    if(existing.exists())return;
+    transaction.set(conversationRef,{
+      id:conversationId,
+      memberIds:[currentUser.uid,otherUser.uid].sort(),
+      memberNames:{[currentUser.uid]:currentUser.displayName||currentUser.username,[otherUser.uid]:otherUser.displayName||otherUser.username},
+      memberUsernames:{[currentUser.uid]:currentUser.username,[otherUser.uid]:otherUser.username},
+      memberAvatars:{[currentUser.uid]:currentUser.avatar||"",[otherUser.uid]:otherUser.avatar||""},
+      lastMessage:"",lastMessageId:"",lastSenderId:"",lastReadAt:{},
+      createdAt:serverTimestamp(),updatedAt:serverTimestamp()
+    });
+  });
+  return conversationId;
+}
+
+export async function sendConversationMessage(conversationId:string,senderId:string,content:string){
+  if(!db)throw new Error("Firebase is not configured");
+  const cleanContent=content.trim();
+  if(!cleanContent)throw new Error("Write a message before sending");
+  if(cleanContent.length>2000)throw new Error("Messages can be up to 2,000 characters");
+  assertAppropriateContent([cleanContent]);
+  const firestore=db;const messageRef=doc(collection(firestore,`conversations/${conversationId}/messages`));
+  const conversationRef=doc(firestore,"conversations",conversationId);const batch=writeBatch(firestore);const now=serverTimestamp();
+  batch.set(messageRef,{id:messageRef.id,conversationId,senderId,content:cleanContent,createdAt:now,updatedAt:now});
+  batch.update(conversationRef,{lastMessage:cleanContent,lastMessageId:messageRef.id,lastSenderId:senderId,lastMessageAt:now,updatedAt:now,[`lastReadAt.${senderId}`]:now});
+  await batch.commit();
+  return messageRef.id;
+}
+
+export async function markConversationRead(conversationId:string,userId:string){
+  if(!db)throw new Error("Firebase is not configured");
+  const now=serverTimestamp();
+  await updateDoc(doc(db,"conversations",conversationId),{[`lastReadAt.${userId}`]:now,updatedAt:now});
 }
 
 export type OwnedFigureInput = {

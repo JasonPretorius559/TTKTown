@@ -8,8 +8,9 @@ import { Film, Bell, Compass, Grid2X2, Home, Menu, MessageCircle, Package, Searc
 import { useAuth } from "@/components/auth-provider";
 import { AccountMenu, GlobalSearch } from "@/components/shell-overlays";
 import { useFirestoreCollection } from "@/lib/firestore-data";
+import { conversationUnread } from "@/lib/messaging";
 import { cn } from "@/lib/utils";
-import type { NotificationItem } from "@/types";
+import type { Conversation, NotificationItem } from "@/types";
 
 const nav = [
   ["Discover",[["/home","Home",Home],["/shorts","Shorts",Film],["/discover","Discover",Compass],["/catalogue","Catalogue",Grid2X2],["/marketplace","Marketplace",Store]]],
@@ -21,6 +22,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname(); const router = useRouter(); const { user, loading, logout } = useAuth();
   const [searchOpen,setSearchOpen]=useState(false);const closeSearch=useCallback(()=>setSearchOpen(false),[]);
   const { data:notifications } = useFirestoreCollection<NotificationItem>(user ? `users/${user.uid}/notifications` : "", { where:[["read", "==", false]], limit:20 });
+  const { data:conversations } = useFirestoreCollection<Conversation>("conversations",{where:[["memberIds","array-contains",user?.uid||"__none__"]],orderBy:["updatedAt","desc"],limit:50});
+  const unreadMessages=user?conversations.filter(conversation=>conversationUnread(conversation,user.uid)).length:0;
   const active = (href: string) => pathname === href || (href !== "/home" && pathname.startsWith(href));
   useEffect(() => { if (!loading && !user) router.replace("/login"); }, [loading, router, user]);
   useEffect(()=>{const shortcut=(event:KeyboardEvent)=>{const target=event.target as HTMLElement;const typing=["INPUT","TEXTAREA","SELECT"].includes(target.tagName)||target.isContentEditable;if((event.key==="/"&&!typing)||((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k")){event.preventDefault();setSearchOpen(true)}};document.addEventListener("keydown",shortcut);return()=>document.removeEventListener("keydown",shortcut)},[]);
@@ -29,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <aside className="app-sidebar">
       <Link href="/home" className="side-logo"><Image src="/tinkertown-mark.svg" alt="" width={38} height={38} priority /><span><strong>TinkerTown</strong><small>Little people. Big stories.</small></span></Link>
       <nav className="side-nav" aria-label="Primary navigation">
-        {nav.map(([group,items])=><div className="side-group" key={group}><div className="side-label">{group}</div>{items.map(([href,label,Icon]) => <Link key={href} href={href} aria-current={active(href)?"page":undefined} className={cn("side-link",active(href)&&"active")}><Icon size={18}/>{label}{label==="Messages"&&notifications.length>0&&<span>{notifications.length}</span>}</Link>)}</div>)}
+        {nav.map(([group,items])=><div className="side-group" key={group}><div className="side-label">{group}</div>{items.map(([href,label,Icon]) => <Link key={href} href={href} aria-current={active(href)?"page":undefined} className={cn("side-link",active(href)&&"active")}><Icon size={18}/>{label}{label==="Messages"&&unreadMessages>0&&<span>{unreadMessages}</span>}</Link>)}</div>)}
       </nav>
       <div className="side-bottom">
         {user?.role === "ADMIN" && <Link href="/admin" className={cn("side-link",active("/admin")&&"active")}><Settings size={18}/>Admin</Link>}
@@ -53,7 +56,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main id="main-content" tabIndex={-1}>{children}</main>
     </div>
     <nav className="mobile-nav" aria-label="Mobile navigation">
-      {[["/home","Home",Home],["/shorts","Shorts",Film],["/marketplace","Market",Store],["/messages","Chat",MessageCircle],[user?.username ? `/profile/${user.username}` : "/onboarding","Profile",UserRound]] .map(([href,label,Icon])=><Link key={href as string} href={href as string} aria-current={active(href as string)?"page":undefined} className={active(href as string)?"active":""}><Icon size={20}/><span>{label as string}</span></Link>)}
+      {[["/home","Home",Home],["/shorts","Shorts",Film],["/marketplace","Market",Store],["/messages","Chat",MessageCircle],[user?.username ? `/profile/${user.username}` : "/onboarding","Profile",UserRound]] .map(([href,label,Icon])=><Link key={href as string} href={href as string} aria-current={active(href as string)?"page":undefined} className={active(href as string)?"active":""}><Icon size={20}/><span>{label as string}</span>{href==="/messages"&&unreadMessages>0&&<i className="nav-badge" aria-label={`${unreadMessages} unread messages`}>{unreadMessages}</i>}</Link>)}
     </nav>
     <GlobalSearch open={searchOpen} onClose={closeSearch}/>
   </div>;

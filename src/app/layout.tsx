@@ -4,6 +4,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import { ToastProvider } from "@/components/toast-provider";
 import "./globals.css";
 import "./shorts.css";
+import "./messages.css";
 
 const inter = Inter({ subsets:["latin"], variable:"--font-inter" });
 const montserrat = Montserrat({ subsets:["latin"], variable:"--font-sora", weight:["700","800","900"] });
