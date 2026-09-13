@@ -4,6 +4,47 @@ Implemented: server-side automatic import publication, bounded/optimised images,
 content-hash storage reuse, transactional storage budgets, private video uploads,
 automated publication gate, Shorts browsing, and daily expiry cleanup.
 
+## Product specification: TinkerTown Shorts
+
+### Goal
+
+Give collectors a fast, visual way to share unboxings, shelf tours, new finds and
+figure details without turning TinkerTown into a generic entertainment feed. Every
+Short can optionally point back to a catalogue figure so discovery remains useful.
+
+### Creator experience
+
+- Entry points: **Short** in the Town Square composer, **Share a short** on `/shorts`,
+  and the Shorts item in desktop and mobile navigation.
+- A creator may record with the rear camera or choose one MP4 from their device.
+- Captions and catalogue figure tags are optional; the video is the only required
+  content. The figure picker uses the existing catalogue search and result cards.
+- Before upload the browser rejects files over 20 MB, longer than 60 seconds, larger
+  than 1920 pixels per side, unreadable files and formats other than MP4.
+- Publishing shows upload percentage followed by the safety-check state. A Short is
+  public only after server-side validation and Sightengine approval.
+
+### Viewer experience
+
+- `/shorts` presents a focused vertical stream with scroll snapping, muted playback,
+  explicit controls, off-screen pausing and deferred loading near the viewport.
+- A tagged Short shows a compact **Featured figure** card linking to the catalogue.
+- Shorts retain TinkerTown's standard like, comment, save, share, report and delete
+  actions. Video posts also render in Town Square, profiles and saved posts.
+- Empty, loading, unavailable-media and moderation-error states provide a clear next
+  action without exposing private media URLs.
+
+### Acceptance criteria
+
+- A signed-in, unsuspended collector can select a valid MP4, optionally tag a figure,
+  publish it once, and see it in both Town Square and Shorts.
+- Invalid type, size, duration, dimensions, ownership, catalogue tag or moderation
+  result fails closed and does not create a public post.
+- Playback supports byte ranges for seeking, never exposes the Blob token, pauses when
+  off-screen or when the tab is hidden, and remains usable at mobile and desktop sizes.
+- Retrying publication is idempotent; abandoned private uploads expire after seven
+  days; deleting a Short removes the post immediately and queues safe blob cleanup.
+
 ## Deployment prerequisites
 
 1. Configure Firebase Admin credentials and the existing private Vercel Blob store.

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Film, MessageCircle, Plus } from "lucide-react";
+import Image from "next/image";
+import { Film, Grid2X2, MessageCircle, Plus } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { CreatePostModal } from "@/components/create-post-modal";
@@ -11,11 +12,12 @@ import { PostOverflowMenu, PostSaveButton, PostShareMenu } from "@/components/po
 import { CommentsModal } from "@/components/comments/comments-modal";
 import { DataState } from "@/components/ui";
 import { useFirestoreCollection } from "@/lib/firestore-data";
-import type { Post } from "@/types";
+import type { Figure, Post } from "@/types";
 
 export default function ShortsPage() {
   const { user } = useAuth();
   const posts = useFirestoreCollection<Post>("posts", { where: [["mediaType", "==", "VIDEO"]], orderBy: ["createdAt", "desc"], limit: 30 });
+  const figures = useFirestoreCollection<Figure>("figures", { limit: 100 });
   const [compose, setCompose] = useState(false);
   const [comments, setComments] = useState<Post | null>(null);
   const [hidden, setHidden] = useState<string[]>([]);
@@ -24,11 +26,12 @@ export default function ShortsPage() {
     <header className="shorts-heading"><div><span className="eyebrow">TinkerTown Shorts</span><h1>Small moments.<br/>Big collections.</h1><p>Unboxings, shelf tours and your latest finds.</p></div><button className="btn btn-primary" onClick={() => setCompose(true)}><Plus size={18}/>Share a short</button></header>
     <DataState loading={posts.loading} error={posts.error} empty={!visible.length} emptyTitle="Your town, in motion" emptyText="Share the first short: a new find, a shelf tour or the details that make it yours.">
       <div className="shorts-layout"><aside className="shorts-note"><Film/><strong>A closer look at collecting.</strong><p>Swipe or scroll to the next short. Press play when something catches your eye.</p><small>Sound starts off. You control playback.</small><Link href="/home">Back to Town Square</Link></aside>
-        <div className="shorts-stream" tabIndex={0} aria-label="Collector shorts; scroll for more videos">{visible.map(post => <article className="short-card" key={post.id}>
+        <div className="shorts-stream" tabIndex={0} aria-label="Collector shorts; scroll for more videos">{visible.map(post => { const figure=figures.data.find(item=>item.id===post.figureId); return <article className="short-card" key={post.id}>
           <ShortVideoPlayer src={post.videoUrl || ""} label={post.caption} immersive/>
+          {figure&&<Link className="short-figure-context" href={`/figures/${figure.slug}`}><Image src={figure.image} alt="" width={42} height={42}/><span><small>Featured figure</small><strong>{figure.name}</strong></span><Grid2X2 size={18}/></Link>}
           <div className="short-info"><div><Link href={`/profile/${post.author}`}>@{post.author}</Link><span>{Math.ceil(post.videoDuration || 0)}s</span><PostOverflowMenu post={post} onVisibilityChange={hide => setHidden(current => hide ? [...current, post.id] : current.filter(id => id !== post.id))}/></div><p>{post.caption}</p></div>
           <footer className="post-actions"><PostLikeButton postId={post.id} likeCount={post.likes || 0}/><button aria-label="Open comments" onClick={() => setComments(post)}><MessageCircle size={20}/><span>{post.comments || 0}</span></button><PostShareMenu post={post}/><PostSaveButton postId={post.id}/></footer>
-        </article>)}</div>
+        </article>})}</div>
       </div>
     </DataState>
     {compose && user && <CreatePostModal open onClose={() => setCompose(false)} user={user} initialMode="video"/>}

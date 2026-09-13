@@ -8,7 +8,7 @@ import { VIDEO_DURATION_LIMIT, VIDEO_STORAGE_LIMIT, VIDEO_TYPES } from "@/lib/me
 
 export type SelectedVideo = { file: File; preview: string; duration: number; assetId: string; uploaded?: boolean };
 
-export async function publishVideo(video: SelectedVideo, caption: string, onProgress: (value: string) => void) {
+export async function publishVideo(video: SelectedVideo, caption: string, figureId: string, onProgress: (value: string) => void) {
   const user = auth?.currentUser;
   if (!user) throw new Error("Sign in to share a video");
   const token = await user.getIdToken();
@@ -21,7 +21,7 @@ export async function publishVideo(video: SelectedVideo, caption: string, onProg
   }
   onProgress("Checking video safety…");
   const response = await fetch("/api/media/videos", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ assetId: video.assetId, caption }) });
+    body: JSON.stringify({ assetId: video.assetId, caption, figureId: figureId || null }) });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || "Video could not be published");
   return result.postId as string;
@@ -56,7 +56,7 @@ export function VideoUploader({ value, onChange }: { value: SelectedVideo | null
   }
   return <section className="video-upload">
     {value ? <><video src={value.preview} controls playsInline preload="metadata" aria-label="Preview your short"/><button type="button" className="btn btn-ghost" onClick={() => { requestId.current++; onChange(null); URL.revokeObjectURL(currentPreview.current); currentPreview.current = ""; }}><X size={16}/>Remove video</button></> :
-      <label className="video-drop"><Film size={32}/><strong>Give your collection a moment.</strong><span>Unbox a find. Tour your shelf. Show the details.</span><em>Choose a video</em><input type="file" accept="video/mp4" onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void choose(file); }}/></label>}
+      <label className="video-drop"><Film size={32}/><strong>Give your collection a moment.</strong><span>Unbox a find. Tour your shelf. Show the details.</span><em>Record or choose a video</em><input type="file" accept="video/mp4" capture="environment" onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void choose(file); }}/></label>}
     <small>Up to 60 seconds · 20 MB · MP4. Videos are checked before publishing.</small>
     {error && <p className="form-alert" role="alert">{error}</p>}
   </section>;

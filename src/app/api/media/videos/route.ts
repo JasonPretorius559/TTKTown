@@ -9,18 +9,19 @@ import { assertAppropriateContent } from "@/lib/content-filter";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-const inputSchema = z.object({ assetId: z.string().uuid(), caption: z.string().trim().max(2000) });
+const inputSchema = z.object({ assetId: z.string().uuid(), caption: z.string().trim().max(2000), figureId: z.string().trim().max(128).nullable().optional() });
 
 export async function POST(request: NextRequest) {
   let user;
   try { user = await requireFirebaseUser(request); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
   try {
-    const { assetId, caption } = inputSchema.parse(await request.json());
+    const { assetId, caption, figureId } = inputSchema.parse(await request.json());
     assertAppropriateContent([caption]);
     const ref = adminDb.collection("mediaAssets").doc(assetId);
-    const [snapshot, profile] = await Promise.all([ref.get(), adminDb.collection("users").doc(user.uid).get()]);
+    const [snapshot, profile, figure] = await Promise.all([ref.get(), adminDb.collection("users").doc(user.uid).get(), figureId ? adminDb.collection("figures").doc(figureId).get() : null]);
     const asset = snapshot.data();
     if (!asset || asset.ownerId !== user.uid || asset.scope !== "video" || asset.state === "DELETING" || !profile.exists || profile.data()?.suspended === true) throw new Error("Video is unavailable");
+    if (figureId && !figure?.exists) throw new Error("The tagged figure is unavailable");
     if (asset.published) return NextResponse.json({ postId: assetId });
     await adminDb.runTransaction(async tx => {
       const current = await tx.get(ref);
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
       tx.create(adminDb.collection("posts").doc(assetId), {
         id: assetId, authorId: user.uid, author: profile.data()!.username, displayName: profile.data()!.displayName,
         avatar: profile.data()!.avatar || "/tinkertown-mark.svg", caption, image: "", images: [], imagePathnames: [],
-        mediaType: "VIDEO", videoAssetId: assetId, videoUrl: `/api/media/videos/${assetId}`, videoDuration: verdict.durationSeconds,
+        mediaType: "VIDEO", videoAssetId: assetId, videoUrl: `/api/media/videos/${assetId}`, videoDuration: verdict.durationSeconds, figureId: figureId || null,
         audience: "PUBLIC", likes: 0, comments: 0, createdAt: now, updatedAt: now,
       });
     });
