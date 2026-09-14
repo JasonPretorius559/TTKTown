@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import sharp from "sharp";
 vi.mock("server-only", () => ({}));
-import { moderateMedia, moderationConfigured, unsafeSightengineResult } from "./media-moderation";
+import { moderateMedia, moderationConfigured, unsafeSightengineResult, videoModerationDecision } from "./media-moderation";
 
 let image: Buffer;
 beforeAll(async () => { image = await sharp({ create: { width: 10, height: 10, channels: 3, background: "white" } }).webp().toBuffer(); });
@@ -33,5 +33,13 @@ describe("Sightengine media safety gate", () => {
     await expect(moderateMedia(image, "image/webp")).rejects.toThrow("safety checks");
     configure({ approved: true }); await expect(moderateMedia(image, "image/webp")).rejects.toThrow("unavailable");
     configure({ status: "failure", error: { message: "quota reached" } }); await expect(moderateMedia(image, "image/webp")).rejects.toThrow("quota reached");
+  });
+  it("accepts only completed safe callbacks for the submitted video", () => {
+    const safe = { status: "success", media: { id: "med_expected" }, data: { status: "finished", frames: [{ nudity: { sexual_activity: .01 } }], audio: { profanity: [] } } };
+    expect(videoModerationDecision(safe, "med_expected", true)).toEqual({ decision: "APPROVED" });
+    expect(videoModerationDecision({ ...safe, media: { id: "med_other" } }, "med_expected", true).decision).toBe("INVALID");
+    expect(videoModerationDecision({ ...safe, data: { status: "ongoing", frames: [] } }, "med_expected", false).decision).toBe("PENDING");
+    expect(videoModerationDecision({ ...safe, data: { status: "finished", frames: [{ violence: { prob: .8 } }] } }, "med_expected", false).decision).toBe("REJECTED");
+    expect(videoModerationDecision({ ...safe, data: { status: "finished", frames: [{ nudity: { sexual_activity: .01 } }] } }, "med_expected", true).decision).toBe("REJECTED");
   });
 });

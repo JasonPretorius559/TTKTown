@@ -24,7 +24,8 @@ export async function publishVideo(video: SelectedVideo, caption: string, figure
     body: JSON.stringify({ assetId: video.assetId, caption, figureId: figureId || null }) });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || "Video could not be published");
-  return result.postId as string;
+  onProgress(result.status === "PROCESSING" ? "Uploaded · safety check running" : "Published");
+  return (result.postId || result.assetId) as string;
 }
 
 export function VideoUploader({ value, onChange }: { value: SelectedVideo | null; onChange: (value: SelectedVideo | null) => void }) {
@@ -35,7 +36,7 @@ export function VideoUploader({ value, onChange }: { value: SelectedVideo | null
   async function choose(file: File) {
     const selection = ++requestId.current;
     setError("");
-    if (!VIDEO_TYPES.includes(file.type) || file.size > VIDEO_STORAGE_LIMIT) { setError("Choose an MP4 video up to 20 MB."); return; }
+    if (!VIDEO_TYPES.includes(file.type) || file.size > VIDEO_STORAGE_LIMIT) { setError("Choose an MP4 video up to 50 MB."); return; }
     const preview = URL.createObjectURL(file);
     const player = document.createElement("video");
     player.preload = "metadata";
@@ -46,7 +47,7 @@ export function VideoUploader({ value, onChange }: { value: SelectedVideo | null
         player.onerror = () => { clearTimeout(timer); reject(new Error("This video cannot be played. Try an MP4 export.")); };
         player.src = preview;
       });
-      if (!Number.isFinite(duration) || duration <= 0 || duration > VIDEO_DURATION_LIMIT || player.videoWidth > 1920 || player.videoHeight > 1920) throw new Error("Use a video up to 60 seconds and 1920 pixels per side. Portrait works best.");
+      if (!Number.isFinite(duration) || duration <= 0 || duration > VIDEO_DURATION_LIMIT || player.videoWidth > 1920 || player.videoHeight > 1920) throw new Error("Use a video up to 5 minutes and 1920 pixels per side. Portrait works best.");
       if (selection !== requestId.current) { URL.revokeObjectURL(preview); return; }
       if (currentPreview.current) URL.revokeObjectURL(currentPreview.current);
       currentPreview.current = preview;
@@ -57,7 +58,7 @@ export function VideoUploader({ value, onChange }: { value: SelectedVideo | null
   return <section className="video-upload">
     {value ? <><video src={value.preview} controls playsInline preload="metadata" aria-label="Preview your short"/><button type="button" className="btn btn-ghost" onClick={() => { requestId.current++; onChange(null); URL.revokeObjectURL(currentPreview.current); currentPreview.current = ""; }}><X size={16}/>Remove video</button></> :
       <label className="video-drop"><Film size={32}/><strong>Give your collection a moment.</strong><span>Unbox a find. Tour your shelf. Show the details.</span><em>Record or choose a video</em><input type="file" accept="video/mp4" capture="environment" onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void choose(file); }}/></label>}
-    <small>Up to 60 seconds · 20 MB · MP4. Videos are checked before publishing.</small>
+    <small>Up to 5 minutes · 50 MB · MP4. Videos are checked before publishing.</small>
     {error && <p className="form-alert" role="alert">{error}</p>}
   </section>;
 }

@@ -6,7 +6,7 @@ import { positiveLimit } from "./media-policy";
 
 export type MediaAsset = {
   id: string; pathname: string; bytes: number; ownerId: string; scope: "catalogue" | "video";
-  state: "RESERVED" | "READY" | "DELETING"; published: boolean; expiresAt: Timestamp;
+  state: "RESERVED" | "MODERATING" | "READY" | "DELETING"; published: boolean; expiresAt: Timestamp;
   contentType?: string; durationSeconds?: number; width?: number; height?: number;
 };
 export function storageBudget(scope: MediaAsset["scope"]) {

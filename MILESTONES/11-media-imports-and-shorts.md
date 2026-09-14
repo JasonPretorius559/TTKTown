@@ -19,7 +19,7 @@ Short can optionally point back to a catalogue figure so discovery remains usefu
 - A creator may record with the rear camera or choose one MP4 from their device.
 - Captions and catalogue figure tags are optional; the video is the only required
   content. The figure picker uses the existing catalogue search and result cards.
-- Before upload the browser rejects files over 20 MB, longer than 60 seconds, larger
+- Before upload the browser rejects files over 50 MB, longer than five minutes, larger
   than 1920 pixels per side, unreadable files and formats other than MP4.
 - Publishing shows upload percentage followed by the safety-check state. A Short is
   public only after server-side validation and Sightengine approval.
@@ -68,12 +68,13 @@ Short can optionally point back to a catalogue figure so discovery remains usefu
 
 Set `SIGHTENGINE_API_USER` and `SIGHTENGINE_API_SECRET` as encrypted server variables.
 TinkerTown sends raw private media bytes directly to Sightengine. Images use the image
-check endpoint; MP4 Shorts use the synchronous video endpoint with nudity, violence,
-gore, offensive, weapon, self-harm, drug, embedded-text and audio-profanity models.
-The application decodes media locally, enforces dimensions and duration, applies its
-policy thresholds to every returned frame, and fails closed on missing audio results,
-timeouts, provider errors or malformed output. Sightengine receives the uploaded media;
-its account retention and processing terms must match TinkerTown's privacy policy.
+check endpoint; MP4 Shorts use the asynchronous video endpoint with authenticated,
+idempotent callbacks and nudity, violence, gore, offensive, weapon, self-harm, drug,
+embedded-text and audio-profanity models. The application decodes media locally,
+enforces dimensions and duration, applies its policy thresholds to every returned
+frame, and fails closed on missing audio results, timeouts, provider errors or malformed
+output. Sightengine receives the uploaded media; its account retention and processing
+terms must match TinkerTown's privacy policy.
 
 ## Limits and behaviour
 
@@ -86,9 +87,9 @@ its account retention and processing terms must match TinkerTown's privacy polic
   media created by this pipeline, not legacy images, avatars or listing uploads.
   Allow for existing storage when setting the budgets. Lowering a budget pauses new
   reservations; it does not delete existing published content.
-- Videos: one MP4, 60 seconds, 20 MiB, at most 1920 pixels per side, five upload
+- Videos: one MP4, five minutes, 50 MB, at most 1920 pixels per side, five upload
   attempts per account per UTC day. Maximum size is reserved before upload and adjusted
-  to actual size at publication. No transcoding or adaptive bitrate service is included.
+  to actual size when moderation starts. No transcoding or adaptive bitrate service is included.
 - Video checks are limited to three attempts per upload, at least one minute apart.
   Failed/abandoned uploads remain private and expire after seven days.
 - Published videos use range-aware authenticated playback; deleted posts immediately

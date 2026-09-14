@@ -1,7 +1,8 @@
 export const IMAGE_DOWNLOAD_LIMIT = 5 * 1024 * 1024;
 export const IMAGE_STORAGE_LIMIT = 200 * 1024;
-export const VIDEO_STORAGE_LIMIT = 20 * 1024 * 1024;
-export const VIDEO_DURATION_LIMIT = 60;
+// Keep the byte cap aligned with Sightengine's direct-upload limit (50 MB).
+export const VIDEO_STORAGE_LIMIT = 50_000_000;
+export const VIDEO_DURATION_LIMIT = 5 * 60;
 export const VIDEO_TYPES = ["video/mp4"];
 
 export function positiveLimit(value: string | undefined, fallback: number) {

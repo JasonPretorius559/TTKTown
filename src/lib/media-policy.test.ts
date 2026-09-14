@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { cleanImportedText, positiveLimit, readBoundedStream, validVideoMetadata } from "./media-policy";
+import { cleanImportedText, positiveLimit, readBoundedStream, validVideoMetadata, VIDEO_DURATION_LIMIT, VIDEO_STORAGE_LIMIT } from "./media-policy";
 
 describe("media boundaries", () => {
   it("cancels a streamed download as soon as actual bytes exceed the limit", async () => {
@@ -14,9 +14,11 @@ describe("media boundaries", () => {
     await expect(readBoundedStream(new ReadableStream({ start(c) { c.close(); } }), 2)).rejects.toThrow("Empty");
   });
   it("does not accept unknown duration, oversized dimensions or non-video media", () => {
-    const valid = { durationSeconds: 60, width: 1080, height: 1920, contentType: "video/mp4" };
+    expect(VIDEO_STORAGE_LIMIT).toBe(50_000_000);
+    expect(VIDEO_DURATION_LIMIT).toBe(300);
+    const valid = { durationSeconds: 300, width: 1080, height: 1920, contentType: "video/mp4" };
     expect(validVideoMetadata(valid)).toBe(true);
-    for (const changes of [{ durationSeconds: Infinity }, { durationSeconds: 0 }, { durationSeconds: 60.1 }, { height: 1921 }, { contentType: "video/webm" }, { contentType: "text/html" }]) expect(validVideoMetadata({ ...valid, ...changes })).toBe(false);
+    for (const changes of [{ durationSeconds: Infinity }, { durationSeconds: 0 }, { durationSeconds: 300.1 }, { height: 1921 }, { contentType: "video/webm" }, { contentType: "text/html" }]) expect(validVideoMetadata({ ...valid, ...changes })).toBe(false);
   });
   it("bounds text and prevents malformed budgets from disabling caps", () => {
     expect(cleanImportedText('<img src=x> Toy\u0000 <b>car</b>', 7)).toBe("Toy car");

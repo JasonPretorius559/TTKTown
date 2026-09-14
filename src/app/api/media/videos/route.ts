@@ -1,14 +1,15 @@
 import { get, head } from "@vercel/blob";
-import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { createHash, randomBytes } from "node:crypto";
+import { Timestamp } from "firebase-admin/firestore";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb, requireFirebaseUser } from "@/lib/firebase-admin";
-import { moderateMedia } from "@/lib/media-moderation";
+import { submitVideoModeration } from "@/lib/media-moderation";
 import { readBoundedStream, VIDEO_STORAGE_LIMIT, VIDEO_TYPES } from "@/lib/media-policy";
 import { assertAppropriateContent } from "@/lib/content-filter";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 const inputSchema = z.object({ assetId: z.string().uuid(), caption: z.string().trim().max(2000), figureId: z.string().trim().max(128).nullable().optional() });
 
 export async function POST(request: NextRequest) {
@@ -23,6 +24,8 @@ export async function POST(request: NextRequest) {
     if (!asset || asset.ownerId !== user.uid || asset.scope !== "video" || asset.state === "DELETING" || !profile.exists || profile.data()?.suspended === true) throw new Error("Video is unavailable");
     if (figureId && !figure?.exists) throw new Error("The tagged figure is unavailable");
     if (asset.published) return NextResponse.json({ postId: assetId });
+    if (asset.moderationStatus === "PROCESSING" && asset.moderationMediaId) return NextResponse.json({ assetId, status: "PROCESSING" }, { status: 202 });
+    if (asset.moderationStatus === "REJECTED") throw new Error("This video did not pass the community safety checks.");
     await adminDb.runTransaction(async tx => {
       const current = await tx.get(ref);
       if (!current.exists || current.data()?.state === "DELETING") throw new Error("Video has expired");
@@ -32,28 +35,26 @@ export async function POST(request: NextRequest) {
     });
     const metadata = await head(asset.pathname);
     if (metadata.size > VIDEO_STORAGE_LIMIT || !VIDEO_TYPES.includes(metadata.contentType)) throw new Error("Unsupported or oversized video");
-    const result = await get(asset.pathname, { access: "private", abortSignal: AbortSignal.timeout(10_000) });
+    const result = await get(asset.pathname, { access: "private", abortSignal: AbortSignal.timeout(60_000) });
     if (!result || result.statusCode !== 200) throw new Error("Video upload is not complete");
     const data = await readBoundedStream(result.stream, VIDEO_STORAGE_LIMIT);
-    const verdict = await moderateMedia(data, metadata.contentType);
+    const callbackToken = randomBytes(32).toString("hex");
+    const callbackUrl = new URL("/api/media/video-moderation/callback", request.nextUrl.origin);
+    callbackUrl.searchParams.set("assetId", assetId);
+    callbackUrl.searchParams.set("token", callbackToken);
+    await ref.update({ moderationStatus: "SUBMITTING", moderationCallbackHash: createHash("sha256").update(callbackToken).digest("hex"),
+      pendingPost: { caption, figureId: figureId || null } });
+    const verdict = await submitVideoModeration(data, callbackUrl.toString());
     await adminDb.runTransaction(async tx => {
       const budgetRef = adminDb.collection("mediaBudgets").doc("video");
-      const [current, budget, currentProfile] = await Promise.all([tx.get(ref), tx.get(budgetRef), tx.get(profile.ref)]);
+      const [current, budget] = await Promise.all([tx.get(ref), tx.get(budgetRef)]);
       if (!current.exists || current.data()?.state === "DELETING") throw new Error("Video has expired");
-      if (currentProfile.data()?.suspended === true) throw new Error("Account cannot publish");
       if (current.data()?.published) return;
-      const now = FieldValue.serverTimestamp();
       tx.update(budgetRef, { bytes: Math.max(0, Number(budget.data()?.bytes || 0) - current.data()!.bytes + data.length) });
-      tx.update(ref, { state: "READY", published: true, bytes: data.length, expiresAt: FieldValue.delete(), contentType: verdict.contentType, durationSeconds: verdict.durationSeconds,
-        width: verdict.width, height: verdict.height, policyVersion: verdict.policyVersion });
-      // Use asset ID as post ID so retries cannot create additional posts.
-      tx.create(adminDb.collection("posts").doc(assetId), {
-        id: assetId, authorId: user.uid, author: profile.data()!.username, displayName: profile.data()!.displayName,
-        avatar: profile.data()!.avatar || "/tinkertown-mark.svg", caption, image: "", images: [], imagePathnames: [],
-        mediaType: "VIDEO", videoAssetId: assetId, videoUrl: `/api/media/videos/${assetId}`, videoDuration: verdict.durationSeconds, figureId: figureId || null,
-        audience: "PUBLIC", likes: 0, comments: 0, createdAt: now, updatedAt: now,
-      });
+      tx.update(ref, { state: "MODERATING", moderationStatus: "PROCESSING", moderationMediaId: verdict.requestId, bytes: data.length,
+        contentType: verdict.contentType, durationSeconds: verdict.durationSeconds, width: verdict.width, height: verdict.height,
+        hasAudio: verdict.hasAudio, sha256: verdict.sha256, policyVersion: verdict.policyVersion });
     });
-    return NextResponse.json({ postId: assetId });
+    return NextResponse.json({ assetId, status: "PROCESSING" }, { status: 202 });
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Video could not be published" }, { status: 400 }); }
 }
