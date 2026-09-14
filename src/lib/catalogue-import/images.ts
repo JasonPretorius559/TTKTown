@@ -7,6 +7,7 @@ import { moderateMedia, moderationConfigured } from "../media-moderation";
 import { cleanImportedText, IMAGE_STORAGE_LIMIT } from "../media-policy";
 import { reserveMedia } from "../media-storage";
 import { downloadSourceImage } from "./safe-image-download";
+import { approvedCatalogueSources, catalogueSourceHosts } from "./source-policy";
 import type { CatalogueCandidate } from "@/types";
 
 export async function storeCandidateImage(input: CatalogueCandidate): Promise<CatalogueCandidate> {
@@ -15,11 +16,10 @@ export async function storeCandidateImage(input: CatalogueCandidate): Promise<Ca
   const candidate = { ...input, imageStatus: "HELD" as CatalogueCandidate["imageStatus"], holdReason: "" };
   for (const key of ["name","franchise","character","manufacturer","series","scale","description"] as const) candidate[key] = cleanImportedText(candidate[key], key === "description" ? 1000 : 160);
   try {
-    const sources = (process.env.CATALOGUE_APPROVED_SOURCES || "").split(",").map(value => value.trim());
-    if (!sources.includes(candidate.source)) throw new Error("Source is not enabled for image reuse and automatic publishing");
-    const sourceHosts = (process.env.CATALOGUE_SOURCE_HOSTS || "").split(",").map(value => value.trim());
+    if (!approvedCatalogueSources().has(candidate.source)) throw new Error("Source is not enabled for image reuse and automatic publishing");
+    const sourceHosts = catalogueSourceHosts();
     const source = new URL(candidate.sourceUrl);
-    if (source.protocol !== "https:" || !sourceHosts.includes(source.hostname)) throw new Error("Product source host is not enabled");
+    if (source.protocol !== "https:" || !sourceHosts.has(source.hostname)) throw new Error("Product source host is not enabled");
     if (!moderationConfigured()) throw new Error("Automated media checks are not configured. Publishing is paused.");
     const original = await downloadSourceImage(candidate.referenceImageUrl);
     // Decode, strip metadata and store one still image; source originals are not retained.

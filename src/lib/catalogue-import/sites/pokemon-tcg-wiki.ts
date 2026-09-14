@@ -57,9 +57,23 @@ async function fetchParsedPage(page:string){
 async function fetchPageImages(pageTitles:string[]){
   const images=new Map<string,string>();
   for(let offset=0;offset<pageTitles.length;offset+=25){
-    const titles=[...new Set(pageTitles.slice(offset,offset+25))];const params=new URLSearchParams({action:"query",prop:"pageimages",piprop:"thumbnail",pithumbsize:"900",titles:titles.join("|"),format:"json",origin:"*"});
-    try{const response=await fetch(`${API_URL}?${params}`,{headers:{"User-Agent":"TinkerTownCatalogueBot/1.0 (community catalogue image import)",Accept:"application/json"},cache:"no-store"});if(!response.ok)continue;const payload=await response.json() as {query?:{pages?:Record<string,{title?:string;thumbnail?:{source?:string}}>}};Object.values(payload.query?.pages||{}).forEach(page=>{if(page.title&&page.thumbnail?.source)images.set(page.title,page.thumbnail.source)})}catch{}
+    const titles=[...new Set(pageTitles.slice(offset,offset+25))];const params=new URLSearchParams({action:"query",prop:"pageimages",piprop:"thumbnail",pithumbsize:"900",redirects:"1",titles:titles.join("|"),format:"json",origin:"*"});
+    try{const response=await fetch(`${API_URL}?${params}`,{headers:{"User-Agent":"TinkerTownCatalogueBot/1.0 (community catalogue image import)",Accept:"application/json"},cache:"no-store"});if(!response.ok)continue;const payload=await response.json() as PokemonPageImagesResponse;for(const [title,image] of pokemonPageImages(payload))images.set(title,image)}catch{}
   }
+  return images;
+}
+
+type PokemonPageImagesResponse={query?:{normalized?:Array<{from:string;to:string}>;redirects?:Array<{from:string;to:string}>;pages?:Record<string,{title?:string;thumbnail?:{source?:string}}>}};
+
+export function pokemonPageImages(payload:PokemonPageImagesResponse){
+  const aliases=new Map<string,string>();
+  payload.query?.normalized?.forEach(item=>aliases.set(item.from,item.to));
+  payload.query?.redirects?.forEach(item=>aliases.set(item.from,item.to));
+  const resolved=(title:string)=>{const seen=new Set<string>();while(aliases.has(title)&&!seen.has(title)){seen.add(title);title=aliases.get(title)!}return title};
+  const byTitle=new Map<string,string>();
+  Object.values(payload.query?.pages||{}).forEach(page=>{if(page.title&&page.thumbnail?.source)byTitle.set(page.title,page.thumbnail.source)});
+  const images=new Map(byTitle);
+  aliases.forEach((_,from)=>{const image=byTitle.get(resolved(from));if(image)images.set(from,image)});
   return images;
 }
 
